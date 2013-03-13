@@ -1,0 +1,65 @@
+#!/bin/bash
+
+function start()
+{
+  sudo -u $user phddns -c /etc/phddns/phlinux.conf -d 
+  sudo crontab -u "$user" /etc/phddns/crontab 
+}
+
+function stop()
+{
+  sudo crontab -u "$user" -r
+  ps aux | grep "phddns -c /etc/phddns/phlinux.conf -[d]" > /tmp/phddns.tmp
+  tag="false"
+  while read line
+  do
+    echo $line >> /tmp/phddns.pid
+    tag="true"
+  done < /tmp/phddns.tmp
+  rm -rf /tmp/phddns.tmp
+
+  if [ $tag = "false" ];then
+    return 0
+  fi
+
+  while read line
+  do
+    pid=`echo $line | cut -d " " -f 2`
+    sudo kill -9 $pid
+  done < /tmp/phddns.pid
+  rm -rf /tmp/phddns.pid
+}
+
+#check account
+account=`whoami`
+if [ "$account" != "root" ]; then
+  echo "Error : please use \"root\" account."
+  exit 1
+fi
+
+user="phddns"
+
+#handle
+case "$1" in
+  start)
+    echo "Start phddns"
+    start
+  ;;
+  stop)
+    echo "Stop phddns"
+    stop
+  ;;
+  status)
+  ;;
+  restart|reload|force_reload)
+    echo "Restart phddns"
+    stop
+    start
+  ;;
+  *)
+    echo "Usage: service phddns start|stop|restart" >&2
+    exit 3
+  ;;
+esac
+
+:
